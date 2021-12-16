@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/objectron@0.3.1627447724/objectron.js" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="./style.css">
+    <title>Object</title>
+</head>
+<body>
+<header>
+    <nav>
+        <ul>
+            <li>
+                <a href="./index.html">Hand</a>
+            </li>
+            <li>
+                <a href="./Pose.html">Pose</a>
+            </li>
+            <li>
+                <a href="./Face.html">Face Mesh</a>
+            </li>
+            <li>
+                <a href="./Selfie.html">Selfie</a>
+            </li>
+            <li>
+                <a href="./Object.html">Object</a>
+            </li>
+            <li>
+                <a href="./Holistics.html">Holistics</a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<div class="container">
+    <video class="input_video"></video>
+    <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+</div>
+<script type="module">
+    const videoElement = document.getElementsByClassName('input_video')[0];
+    const canvasElement = document.getElementsByClassName('output_canvas')[0];
+    const canvasCtx = canvasElement.getContext('2d');
+
+    function onResults(results) {
+        canvasCtx.save();
+        canvasCtx.drawImage(
+            results.image, 0, 0, canvasElement.width, canvasElement.height);
+        if (!!results.objectDetections) {
+            for (const detectedObject of results.objectDetections) {
+                // Reformat keypoint information as landmarks, for easy drawing.
+                const landmarks: mpObjectron.Point2D[] =
+                    detectedObject.keypoints.map(x => x.point2d);
+                // Draw bounding box.
+                drawingUtils.drawConnectors(canvasCtx, landmarks,
+                    mpObjectron.BOX_CONNECTIONS, {color: '#FF0000'});
+                // Draw centroid.
+                drawingUtils.drawLandmarks(canvasCtx, [landmarks[0]], {color: '#FFFFFF'});
+            }
+        }
+        canvasCtx.restore();
+    }
+
+    const objectron = new Objectron({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/objectron/${file}`;
+        }});
+    objectron.setOptions({
+        modelName: 'Chair',
+        maxNumObjects: 3,
+    });
+    objectron.onResults(onResults);
+
+    const camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await objectron.send({image: videoElement});
+        },
+        width: 1280,
+        height: 720
+    });
+    camera.start();
+</script>
+</body>
+</html>
